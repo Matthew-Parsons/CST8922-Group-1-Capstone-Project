@@ -6,11 +6,13 @@ function App() {
   const [isRecording, setIsRecording] = useState(false)
   const [audioURL, setAudioURL] = useState<string | null>(null)
   const [audioLevels, setAudioLevels] = useState<number[]>(Array(20).fill(0))
+  const [recordingTime, setRecordingTime] = useState(0)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const audioContextRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const animationFrameRef = useRef<number | null>(null)
+  const timerIntervalRef = useRef<number | null>(null)
 
   const startRecording = async () => {
     try {
@@ -39,10 +41,15 @@ function App() {
         stream.getTracks().forEach(track => track.stop())
         if (audioContextRef.current) audioContextRef.current.close()
         if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current)
+        if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
       }
 
       mediaRecorder.start()
       setIsRecording(true)
+      setRecordingTime(0)
+      timerIntervalRef.current = window.setInterval(() => {
+        setRecordingTime(prev => prev + 1)
+      }, 1000)
       updateAudioLevels()
     } catch (error) {
       console.error('Error accessing microphone:', error)
@@ -146,25 +153,34 @@ function App() {
                 </button>
               )}
               {isRecording && (
-                <div style={{ 
-                  marginTop: '20px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '3px',
-                  height: '50px'
-                }}>
-                  {audioLevels.map((level, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        width: '4px',
-                        height: `${Math.max(10, level)}%`,
-                        background: '#646cff',
-                        borderRadius: '2px',
-                        transition: 'height 0.1s ease'
-                      }}
-                    />
-                  ))}
+                <div style={{ marginTop: '20px' }}>
+                  <div style={{ 
+                    fontSize: '24px', 
+                    fontWeight: 'bold', 
+                    color: '#646cff',
+                    marginBottom: '10px'
+                  }}>
+                    {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                  </div>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '3px',
+                    height: '50px'
+                  }}>
+                    {audioLevels.map((level, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          width: '4px',
+                          height: `${Math.max(10, level)}%`,
+                          background: '#646cff',
+                          borderRadius: '2px',
+                          transition: 'height 0.1s ease'
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
