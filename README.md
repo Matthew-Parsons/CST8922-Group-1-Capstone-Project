@@ -24,7 +24,7 @@ A React + TypeScript + Vite application for recording audio and taking photos.
 
 1. Navigate to the project directory:
 ```bash
-cd c:\Git\dummy-app
+cd dummy-app
 ```
 
 2. Install dependencies:
