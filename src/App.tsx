@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
+import { Camera } from '@capacitor/camera';
+import { VoiceRecorder } from 'capacitor-voice-recorder';
 import './App.css'
 
 function App() {
@@ -25,9 +27,19 @@ function App() {
     }
   }, [isCameraOn])
 
+  const requestMicrophonePermission = async () => {
+  const result = await VoiceRecorder.requestAudioRecordingPermission();
+
+  if (result.value) {
+    console.log('Microphone permission granted');
+  } else {
+    console.log('Microphone permission denied');
+  }
+};
+
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true }) 
       const mediaRecorder = new MediaRecorder(stream)
       mediaRecorderRef.current = mediaRecorder
       audioChunksRef.current = []
