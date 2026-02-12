@@ -7,12 +7,23 @@ function App() {
   const [audioURL, setAudioURL] = useState<string | null>(null)
   const [audioLevels, setAudioLevels] = useState<number[]>(Array(20).fill(0))
   const [recordingTime, setRecordingTime] = useState(0)
+  const [isCameraOn, setIsCameraOn] = useState(false)
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const audioContextRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const timerIntervalRef = useRef<number | null>(null)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+
+  useEffect(() => {
+    if (isCameraOn && streamRef.current && videoRef.current) {
+      videoRef.current.srcObject = streamRef.current
+    }
+  }, [isCameraOn])
 
   const startRecording = async () => {
     try {
@@ -76,6 +87,60 @@ function App() {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop()
       setIsRecording(false)
+    }
+  }
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      const videoTracks = stream.getVideoTracks()
+      
+      if (videoTracks.length === 0) {
+        alert('No video tracks found in stream')
+        return
+      }
+      
+      streamRef.current = stream
+      setIsCameraOn(true)
+    } catch (error) {
+      console.error('Error accessing camera:', error)
+      alert('Could not access camera: ' + error)
+    }
+  }
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop())
+      streamRef.current = null
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+    setIsCameraOn(false)
+  }
+
+  const takePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current
+      const canvas = canvasRef.current
+      
+      // Use video dimensions or fallback to 640x480
+      const width = video.videoWidth || 640
+      const height = video.videoHeight || 480
+      
+      if (width === 0 || height === 0) {
+        alert('Video not ready yet, please wait a moment')
+        return
+      }
+      
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, width, height)
+        const photoURL = canvas.toDataURL('image/png')
+        setCapturedPhoto(photoURL)
+      }
     }
   }
 
@@ -212,7 +277,110 @@ function App() {
         {activePage === 'photo' && (
           <div>
             <h1>Take Photo</h1>
-            <p>Photo capture functionality will be here</p>
+            <div style={{ marginTop: '20px' }}>
+              {!isCameraOn ? (
+                <button 
+                  onClick={startCamera}
+                  style={{ 
+                    padding: '15px 30px', 
+                    fontSize: '16px',
+                    background: '#646cff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '5px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Start Camera
+                </button>
+              ) : (
+                <div>
+                  <button 
+                    onClick={stopCamera}
+                    style={{ 
+                      padding: '15px 30px', 
+                      fontSize: '16px',
+                      background: '#ff4646',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '5px',
+                      cursor: 'pointer',
+                      marginRight: '10px'
+                    }}
+                  >
+                    Stop Camera
+                  </button>
+                  <button 
+                    onClick={takePhoto}
+                    style={{ 
+                      padding: '15px 30px', 
+                      fontSize: '16px',
+                      background: '#646cff',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '5px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Capture Photo
+                  </button>
+                </div>
+              )}
+            </div>
+            {isCameraOn && (
+              <div style={{ marginTop: '20px' }}>
+                <video 
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  onLoadedMetadata={(e) => {
+                    console.log('Video metadata loaded')
+                    console.log('Video dimensions:', e.currentTarget.videoWidth, 'x', e.currentTarget.videoHeight)
+                  }}
+                  onCanPlay={() => console.log('Video can play')}
+                  style={{ 
+                    width: '640px', 
+                    height: '480px', 
+                    border: '2px solid #646cff',
+                    borderRadius: '5px',
+                    backgroundColor: '#000'
+                  }}
+                />
+                <canvas ref={canvasRef} style={{ display: 'none' }} />
+              </div>
+            )}
+            {capturedPhoto && (
+              <div style={{ marginTop: '30px' }}>
+                <h3>Captured Photo:</h3>
+                <img 
+                  src={capturedPhoto} 
+                  alt="Captured" 
+                  style={{ 
+                    maxWidth: '640px', 
+                    border: '2px solid #646cff',
+                    borderRadius: '5px',
+                    marginTop: '10px'
+                  }} 
+                />
+                <br />
+                <a 
+                  href={capturedPhoto} 
+                  download="photo.png"
+                  style={{ 
+                    display: 'inline-block',
+                    marginTop: '10px',
+                    padding: '10px 20px',
+                    background: '#646cff',
+                    color: 'white',
+                    textDecoration: 'none',
+                    borderRadius: '5px'
+                  }}
+                >
+                  Download
+                </a>
+              </div>
+            )}
           </div>
         )}
       </main>
